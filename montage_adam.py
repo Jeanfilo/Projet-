@@ -25,8 +25,8 @@ PLANS = [
     ("7B", 82.0, 95.0),   # leçon : ne jamais désespérer
     ("8C", 95.0, 103.0),  # verset 39:53 (récitation) : l'immensité de la miséricorde
     ("8B", 103.0, 110.0), # le renouveau
-    ("6A", 110.0, 116.0), # traduction : "ne désespérez pas"
-    ("7A", 116.0, 123.0), # "Allah pardonne tous les péchés"
+    ("9A", 110.0, 116.0), # traduction : "ne désespérez pas"
+    ("9B", 116.0, 123.0), # "Allah pardonne tous les péchés"
     ("8A", 123.0, None),  # "la porte du repentir est immense"
 ]
 
@@ -64,8 +64,16 @@ def main():
         graph.append(f"[{prev}][v{j + 1}]xfade=transition=fade:duration={T}:offset={off:.3f}[x{j}]")
         prev = f"x{j}"
     graph.append(f"[{prev}]fade=t=in:d=1,fade=t=out:st={total - 1.5:.2f}:d=1.5,format=yuv420p[vout]")
-    graph.append(f"[{len(plans)}:a]aresample=48000,loudnorm=I=-14:TP=-1.5:LRA=11,"
-                 f"apad=pad_dur=2,atrim=duration={total:.3f}[aout]")
+    # ambiance 100 % générée par ffmpeg (aucun droit à gérer) : souffle doux + nappe grave
+    graph.append(f"anoisesrc=d={total + 2:.2f}:c=brown:r=48000:a=0.5,lowpass=f=700,"
+                 f"tremolo=f=0.15:d=0.5,volume=0.20,pan=stereo|c0=c0|c1=c0[vent]")
+    graph.append(f"aevalsrc='0.5*sin(2*PI*110*t)+0.35*sin(2*PI*164.8*t)+0.25*sin(2*PI*220.4*t)':"
+                 f"d={total + 2:.2f}:s=48000:c=stereo,tremolo=f=0.1:d=0.6,volume=0.10[nappe]")
+    graph.append(f"[vent][nappe]amix=inputs=2:normalize=0,afade=t=in:d=3,"
+                 f"afade=t=out:st={total - 4:.2f}:d=4[amb]")
+    graph.append(f"[{len(plans)}:a]aresample=48000,aformat=channel_layouts=stereo[vo]")
+    graph.append(f"[vo][amb]amix=inputs=2:weights=1 0.5:normalize=0:duration=first,"
+                 f"loudnorm=I=-14:TP=-1.5:LRA=11,apad=pad_dur=2,atrim=duration={total:.3f}[aout]")
 
     script = os.path.join(here, ".filtre.txt")
     with open(script, "w") as f:
