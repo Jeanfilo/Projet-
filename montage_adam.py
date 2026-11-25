@@ -23,10 +23,11 @@ PLANS = [
     ("6B", 70.0, 76.0),   # Allah accepta son repentir
     ("7A", 76.0, 82.0),   # établis sur terre
     ("7B", 82.0, 95.0),   # leçon : ne jamais désespérer
-    ("6B", 95.0, 110.0),  # verset 39:53 (récitation)
-    ("6A", 110.0, 119.0), # traduction du verset
-    ("7A", 119.0, 125.0), # "le très miséricordieux"
-    ("7B", 125.0, None),  # "la porte du repentir est immense"
+    ("8C", 95.0, 103.0),  # verset 39:53 (récitation) : l'immensité de la miséricorde
+    ("8B", 103.0, 110.0), # le renouveau
+    ("6A", 110.0, 116.0), # traduction : "ne désespérez pas"
+    ("7A", 116.0, 123.0), # "Allah pardonne tous les péchés"
+    ("8A", 123.0, None),  # "la porte du repentir est immense"
 ]
 
 
