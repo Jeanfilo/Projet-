@@ -1,31 +1,44 @@
 import Reveal from "./Reveal";
 import SectionTitle from "./SectionTitle";
-import Scene from "./Scene";
+import Photo from "./Photo";
 
-const items = [
-  { t: "Restauration", d: "Présentation du restaurant / petit-déjeuner : horaires, carte et formules à compléter." },
-  { t: "Services", d: "Wi-Fi, accueil, parking, animaux… : liste à confirmer par l'établissement." },
-  { t: "Groupes & événements", d: "Séminaires, mariages, séjours en groupe : à confirmer." },
+const hours = [
+  ["Lundi", "Fermé"], ["Mardi – Jeudi", "Soir · 19h – 21h30"], ["Vendredi – Samedi", "12h – 14h · 19h – 21h30"], ["Dimanche", "Midi · 12h – 14h"],
 ];
+const services = ["Wi-Fi gratuit", "Parking public gratuit", "Bar", "Accessible PMR", "Salle de réception (jusqu'à 25 pers.)", "Petit-déjeuner dès 16 €"];
 
 export default function Services() {
   return (
-    <section id="services" className="relative overflow-hidden bg-navy py-24 text-ivory md:py-36">
-      <div className="mx-auto grid max-w-7xl items-center gap-14 px-5 md:px-10 lg:grid-cols-2">
-        <div>
-          <SectionTitle light eyebrow="Table & prestations" title="Restauration et services" />
-          <ul className="mt-12 space-y-6">
-            {items.map((s, i) => (
-              <Reveal key={s.t} delay={i * 0.1}>
-                <li className="group flex gap-5 border-t border-white/15 pt-6">
-                  <span className="font-serif text-3xl text-gold transition-transform duration-500 group-hover:translate-x-2">0{i + 1}</span>
-                  <div><h3 className="font-serif text-2xl">{s.t}</h3><p className="mt-2 text-white/70">{s.d}</p><span className="mt-3 inline-block rounded-full border border-gold/50 px-3 py-1 text-[11px] uppercase tracking-widest text-gold-light">À compléter</span></div>
-                </li>
-              </Reveal>
-            ))}
-          </ul>
+    <section id="restaurant" className="relative overflow-hidden bg-navy py-24 text-ivory md:py-36">
+      <div className="mx-auto max-w-7xl px-5 md:px-10">
+        <div className="grid items-center gap-14 lg:grid-cols-2">
+          <div>
+            <SectionTitle light eyebrow="À table" title="Le Comptoir du Beau Rivage" />
+            <Reveal delay={0.1}>
+              <p className="mt-8 max-w-xl text-lg leading-relaxed text-white/75">Une cuisine authentique et généreuse, élaborée à partir de produits frais et de saison : produits de la mer, viandes grillées, légumes de saison. Le chef Yann Bouquerel signe une cuisine bistrot de bord de mer, à 20 mètres des vagues, avec petite terrasse extérieure.</p>
+              <div className="mt-8 inline-flex items-baseline gap-4 border-y border-gold/40 py-4">
+                <span className="font-serif text-4xl text-gold-light">41 €</span>
+                <span className="text-sm text-white/70">Menu Beau Rivage — entrée, plat, dessert<br />du mardi au samedi soir</span>
+              </div>
+              <ul className="mt-10 divide-y divide-white/10 text-sm">
+                {hours.map(([d, h]) => (<li key={d} className="flex justify-between py-3"><span className="text-white/60">{d}</span><span>{h}</span></li>))}
+              </ul>
+              <p className="mt-3 text-xs text-white/45">Horaires indicatifs, susceptibles d&apos;évoluer selon la saison. Réservation : 02 31 77 06 09.</p>
+            </Reveal>
+          </div>
+          <Reveal delay={0.15} className="relative">
+            <div className="grid grid-cols-5 gap-3">
+              <div className="relative col-span-3 aspect-[3/4] overflow-hidden rounded-3xl"><Photo name="salle-resto" alt="La salle du restaurant" sizes="(min-width:1024px) 30vw, 60vw" pos="30% 50%" /></div>
+              <div className="col-span-2 grid gap-3">
+                <div className="relative overflow-hidden rounded-3xl"><Photo name="plat-burrata" alt="Burrata et fraises" sizes="20vw" /></div>
+                <div className="relative overflow-hidden rounded-3xl"><Photo name="verre" alt="Un verre au bar" sizes="20vw" /></div>
+              </div>
+            </div>
+          </Reveal>
         </div>
-        <Reveal delay={0.2}><div className="aspect-[4/5] overflow-hidden rounded-3xl"><Scene variant="table" label="Photo à fournir" /></div></Reveal>
+        <div className="mt-20 flex flex-wrap gap-3">
+          {services.map((s, i) => (<Reveal key={s} delay={i * 0.05}><span className="inline-block rounded-full border border-gold/40 px-5 py-2.5 text-sm text-gold-light transition-colors duration-300 hover:bg-gold hover:text-navy">{s}</span></Reveal>))}
+        </div>
       </div>
     </section>
   );

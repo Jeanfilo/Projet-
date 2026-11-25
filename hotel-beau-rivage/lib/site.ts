@@ -1,23 +1,21 @@
-// ⚠️ MAQUETTE COMMERCIALE — aucune donnée ci-dessous n'est issue du site officiel.
-// Toute valeur "PLACEHOLDER" doit être remplacée par une information vérifiée auprès de l'établissement.
-export const PLACEHOLDER = "À compléter";
-
+// Informations issues du site officiel de l'hôtel (consulté le 25/11/2026). Maquette : à faire valider par l'établissement.
 export const site = {
   name: "Le Beau Rivage",
   city: "Luc-sur-Mer",
   region: "Normandie",
   tagline: "Face à la mer, au cœur de la Côte de Nacre",
-  // Informations de contact NON vérifiées : à remplacer.
-  phone: "" as string, // ex: "+33 2 XX XX XX XX"
-  email: "" as string,
-  address: "" as string, // adresse exacte à vérifier
-  mapsQuery: "Hôtel Le Beau Rivage Luc-sur-Mer",
+  phone: "+33231770609",
+  phoneDisplay: "+33 (0)2 31 77 06 09",
+  email: "beaurivageluc@gmail.com",
+  address: "1 rue du Docteur Charcot, 14530 Luc-sur-Mer",
+  maps: "https://goo.gl/maps/Zsa2rSa9BQnPwkZJ7",
+  officialBooking: "https://secure.reservit.com/reservit/reserhotel.php?action=tabavail&lang=FR&id=233&hotelid=7736",
 };
 
 export const nav = [
   { href: "#hotel", label: "L'hôtel" },
   { href: "#chambres", label: "Chambres" },
-  { href: "#services", label: "Services" },
+  { href: "#restaurant", label: "Restaurant" },
   { href: "#luc-sur-mer", label: "Luc-sur-Mer" },
   { href: "#contact", label: "Contact" },
 ];

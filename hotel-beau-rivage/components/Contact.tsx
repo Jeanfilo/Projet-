@@ -3,11 +3,11 @@ import { useState } from "react";
 import Reveal from "./Reveal";
 import SectionTitle from "./SectionTitle";
 import Button from "./Button";
-import { site, PLACEHOLDER } from "@/lib/site";
+import { site } from "@/lib/site";
 
 export default function Contact() {
   const [sent, setSent] = useState(false);
-  const maps = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(site.mapsQuery)}`;
+  const maps = site.maps;
   const field = "w-full rounded-xl border border-sand-deep bg-white/70 px-4 py-3.5 text-navy outline-none transition focus:border-gold focus:ring-2 focus:ring-gold/30";
   return (
     <section id="contact" className="bg-sand/60 py-24 md:py-36">
@@ -16,12 +16,12 @@ export default function Contact() {
           <SectionTitle eyebrow="Réserver" title="Contact & réservation" />
           <Reveal delay={0.1}>
             <dl className="mt-10 space-y-5 text-navy-soft">
-              <div><dt className="eyebrow">Adresse</dt><dd className="mt-1">{site.address || `${PLACEHOLDER} — Luc-sur-Mer, Normandie`}</dd></div>
-              <div><dt className="eyebrow">Téléphone</dt><dd className="mt-1">{site.phone || `${PLACEHOLDER} (numéro à vérifier)`}</dd></div>
-              <div><dt className="eyebrow">E-mail</dt><dd className="mt-1">{site.email || `${PLACEHOLDER}`}</dd></div>
+              <div><dt className="eyebrow">Adresse</dt><dd className="mt-1">{site.address}</dd></div>
+              <div><dt className="eyebrow">Téléphone</dt><dd className="mt-1">{site.phoneDisplay}</dd></div>
+              <div><dt className="eyebrow">E-mail</dt><dd className="mt-1"><a href={`mailto:${site.email}`} className="link-u">{site.email}</a></dd></div>
             </dl>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button href={site.phone ? `tel:${site.phone.replace(/\s/g, "")}` : undefined} disabled={!site.phone} variant="navy">Appeler</Button>
+              <Button href={`tel:${site.phone}`} variant="navy">Appeler</Button>
               <Button href={maps} external variant="outline">Itinéraire</Button>
             </div>
           </Reveal>
