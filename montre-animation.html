@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Montre – Hero animé</title>
+<style>
+  :root {
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --gold: #c9a45c;
+    --bg: #0b0b0d;
+    --ink: #f3efe6;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    min-height: 100vh; background: radial-gradient(circle at 50% 40%, #1a1a20, var(--bg) 70%);
+    color: var(--ink); font-family: Georgia, "Times New Roman", serif;
+    display: grid; place-items: center; padding: 24px; overflow: hidden;
+  }
+  main { display: grid; gap: 32px; justify-items: center; text-align: center; }
+
+  /* Cadran : entrée une seule fois (page load = rare) */
+  .watch { width: min(78vw, 420px); aspect-ratio: 1; opacity: 0; transform: scale(0.94);
+    animation: enter 900ms var(--ease-out) 100ms forwards; }
+  .case { fill: #121216; stroke: var(--gold); stroke-width: 6; }
+  .tick { stroke: var(--gold); stroke-linecap: round; opacity: 0;
+    animation: fade 400ms var(--ease-out) forwards;
+    animation-delay: calc(500ms + var(--i) * 12ms); } /* stagger 12ms x 60 = 720ms */
+  .hand { transform-origin: 200px 200px; will-change: transform; }
+  .hour, .min { stroke: var(--ink); stroke-linecap: round; }
+  .sec { stroke: var(--gold); stroke-linecap: round; }
+  .pivot { fill: var(--gold); }
+
+  h1 { font-weight: 400; font-size: clamp(28px, 5vw, 48px); letter-spacing: .08em; }
+  p  { opacity: .7; letter-spacing: .2em; font-size: 13px; text-transform: uppercase; }
+  h1, p, a { opacity: 0; transform: translateY(12px);
+    animation: up 700ms var(--ease-out) forwards; }
+  h1 { animation-delay: 1000ms; } p { animation-delay: 1100ms; } a { animation-delay: 1200ms; }
+  a { color: var(--bg); background: var(--gold); padding: 12px 28px; text-decoration: none;
+    letter-spacing: .15em; font-size: 13px; text-transform: uppercase;
+    transition: transform 160ms var(--ease-out); }
+  a:active { transform: scale(0.97); }
+  @media (hover: hover) and (pointer: fine) { a:hover { filter: brightness(1.1); } }
+
+  @keyframes enter { to { opacity: 1; transform: none; } }
+  @keyframes fade  { to { opacity: 1; } }
+  p { --o: .7; }
+  @keyframes up { to { opacity: var(--o, 1); transform: none; } }
+
+  /* Reduced motion : on garde le fondu, on retire le mouvement */
+  @media (prefers-reduced-motion: reduce) {
+    .watch, h1, p, a { transform: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <svg class="watch" viewBox="0 0 400 400" role="img" aria-label="Montre analogique">
+    <circle class="case" cx="200" cy="200" r="190"/>
+    <g id="ticks"></g>
+    <line class="hand hour" id="h" x1="200" y1="200" x2="200" y2="125" stroke-width="8"/>
+    <line class="hand min"  id="m" x1="200" y1="200" x2="200" y2="85"  stroke-width="5"/>
+    <line class="hand sec"  id="s" x1="200" y1="225" x2="200" y2="70"  stroke-width="2"/>
+    <circle class="pivot" cx="200" cy="200" r="7"/>
+  </svg>
+  <h1>Maison Temps</h1>
+  <p>Collection 2026</p>
+  <a href="#">Découvrir</a>
+</main>
+<script>
+  const ticks = document.getElementById('ticks');
+  for (let i = 0; i < 60; i++) {
+    const big = i % 5 === 0, a = i * 6 * Math.PI / 180;
+    const r1 = big ? 160 : 172, r2 = 180;
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    t.setAttribute('class', 'tick');
+    t.setAttribute('stroke-width', big ? 4 : 1.5);
+    t.setAttribute('x1', 200 + Math.sin(a) * r1); t.setAttribute('y1', 200 - Math.cos(a) * r1);
+    t.setAttribute('x2', 200 + Math.sin(a) * r2); t.setAttribute('y2', 200 - Math.cos(a) * r2);
+    t.style.setProperty('--i', i);
+    ticks.appendChild(t);
+  }
+  const [h, m, s] = ['h', 'm', 's'].map(id => document.getElementById(id));
+  const start = performance.now();
+  // Les aiguilles balaient de 12h jusqu'à l'heure réelle (1.4s), puis suivent le temps.
+  const ease = t => 1 - Math.pow(1 - t, 4);
+  (function frame(now) {
+    const d = new Date(), ms = d.getMilliseconds();
+    const sec = d.getSeconds() + ms / 1000, min = d.getMinutes() + sec / 60, hr = (d.getHours() % 12) + min / 60;
+    const p = ease(Math.min((now - start - 600) / 1400, 1) || 0);
+    const k = Math.max(p, 0);
+    h.style.transform = `rotate(${hr * 30 * k}deg)`;
+    m.style.transform = `rotate(${min * 6 * k + (1 - k) * 360}deg)`;
+    s.style.transform = `rotate(${sec * 6 * k}deg)`;
+    requestAnimationFrame(frame);
+  })(performance.now());
+</script>
+</body>
+</html>
