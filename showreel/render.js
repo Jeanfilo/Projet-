@@ -1,6 +1,6 @@
-// usage: node render.js <outDir> [frame,frame,...]   (no list = all 900 frames, 4 workers)
+// usage: node render.js <outDir> [frame,frame,...]   (no list = all 864 frames = 14.4 s, 4 workers)
 const {chromium}=require('playwright'),fs=require('fs'),path=require('path');
-const out=process.argv[2],list=process.argv[3]?process.argv[3].split(',').map(Number):[...Array(900).keys()];
+const out=process.argv[2],list=process.argv[3]?process.argv[3].split(',').map(Number):[...Array(864).keys()];
 fs.mkdirSync(out,{recursive:true});
 (async()=>{const b=await chromium.launch(),N=Math.min(4,list.length);
   await Promise.all([...Array(N).keys()].map(async w=>{const p=await b.newPage({viewport:{width:1920,height:1080}});
