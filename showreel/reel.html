@@ -24,6 +24,7 @@ function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t
 const BEATS=[];for(let b=2;b<13;b+=.5)BEATS.push(b);
 const pulse=t=>BEATS.reduce((s,b)=>t>=b?s+Math.exp(-(t-b)*12):s,0);
 const IMPACTS=[2,5,8,11,13];
+const KICKS=[2,3,4,5,6,7,8,8.75,9,9.75,10,11,12]; // mirrors audio.js kick pattern
 
 // ---------- helpers ----------
 function bg(c){ctx.fillStyle=c;ctx.fillRect(-200,-200,W+400,H+400)}
@@ -231,7 +232,7 @@ function s6(t){
 
 // ---------- composition ----------
 function camera(t){let dx=0,dy=0,z=1;IMPACTS.forEach(b=>{const d=t-b;if(d<0||d>.8)return;const a=Math.exp(-d*9);dx+=11*a*Math.sin(d*70);dy+=8*a*Math.cos(d*53);z+=.03*Math.exp(-d*7)});
-  ctx.translate(CX+dx,CY+dy);ctx.scale(z,z);ctx.translate(-CX,-CY)}
+  KICKS.forEach(b=>{const d=t-b;if(d>=0&&d<.4)z+=.012*Math.exp(-d*14)});ctx.translate(CX+dx,CY+dy);ctx.scale(z,z);ctx.translate(-CX,-CY)}
 function draw(t){ctx.save();ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';camera(t);
   (t<2?s1:t<5?s2:t<8?s3:t<11?s4:t<13?s5:s6)(t);ctx.restore()}
 const GRAIN=[0,1,2,3].map(n=>{const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d'),d=g.createImageData(256,256),r=rng(99+n);
@@ -247,6 +248,13 @@ function hud(t,f){const light=(t>=2.05&&t<4.6)||(t>=11&&t<12.9),c=light?'11,11,1
 function renderFrame(f){
   for(let s=0;s<SUB;s++){draw(f/FPS+s/SUB*(.55/FPS));out.globalAlpha=1/(s+1);out.drawImage(buf,0,0)} // accumulated motion blur
   out.globalAlpha=1;const t=f/FPS;
+  // drop FX synced to the soundtrack hits: RGB split + glitch slices + flash
+  const hit=[...IMPACTS,10.5].reduce((m,b)=>t>=b&&t-b<.35?Math.max(m,Math.exp(-(t-b)*11)):m,0);
+  if(hit>.03){const d=Math.round(hit*16),img=out.getImageData(0,0,W,H),s=img.data,c=new Uint8ClampedArray(s);
+    for(let y=0;y<H;y++){const row=y*W*4;for(let x=0;x<W;x++){const i=row+x*4;s[i]=c[row+Math.min(W-1,x+d)*4];s[i+2]=c[row+Math.max(0,x-d)*4+2]}}
+    out.putImageData(img,0,0);const r=rng(f*7+1);
+    for(let k=0;k<Math.round(hit*9);k++){const y=r()*H,h=8+r()*70;out.drawImage(out.canvas,0,y,W,h,(r()-.5)*160*hit,y,W,h)}
+    out.fillStyle=`rgba(255,255,255,${hit*.14})`;out.fillRect(0,0,W,H)}
   const v=out.createRadialGradient(CX,CY,H*.35,CX,CY,H*1.05);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,.38)');out.fillStyle=v;out.fillRect(0,0,W,H);
   out.save();out.globalAlpha=.045;out.globalCompositeOperation='overlay';const r=rng(f);out.translate(-r()*256,-r()*256);out.fillStyle=GRAIN[f%4];out.fillRect(0,0,W+256,H+256);out.restore();
   hud(t,f)}
