@@ -1,0 +1,256 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Showreel</title>
+<style>html,body{margin:0;background:#000}canvas{display:block;width:100vw;height:auto}</style>
+</head><body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+// 15 s showreel, 1920x1080. Everything is a pure function of time t -> deterministic frames.
+const W=1920,H=1080,CX=W/2,CY=H/2,FPS=60,DUR=15,SUB=5;
+const COL={ink:'#0B0B10',coral:'#FF5A36',violet:'#7A5CFF',mint:'#2EE6A8',sun:'#FFC845',cream:'#F3EFE6'};
+const out=document.getElementById('c').getContext('2d');
+const buf=document.createElement('canvas');buf.width=W;buf.height=H;const ctx=buf.getContext('2d');
+
+// ---------- math ----------
+const cl=(x,a=0,b=1)=>x<a?a:x>b?b:x, P=(t,a,b)=>cl((t-a)/(b-a)), lerp=(a,b,x)=>a+(b-a)*x;
+const oExpo=x=>x>=1?1:1-Math.pow(2,-10*x), iExpo=x=>x<=0?0:Math.pow(2,10*x-10);
+const ioExpo=x=>x<=0?0:x>=1?1:x<.5?Math.pow(2,20*x-10)/2:(2-Math.pow(2,-20*x+10))/2;
+const oCubic=x=>1-Math.pow(1-x,3), ioCubic=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const oBack=x=>{const s=1.9;return 1+(s+1)*Math.pow(x-1,3)+s*Math.pow(x-1,2)};
+const spr=(dt,z=.34,w=16)=>dt<=0?0:1-Math.exp(-z*w*dt)*Math.cos(w*Math.sqrt(1-z*z)*dt);
+const mod=(a,n)=>((a%n)+n)%n, TAU=Math.PI*2;
+const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const mix=(a,b,x)=>{const A=hex(a),B=hex(b);return `rgb(${A.map((v,i)=>Math.round(lerp(v,B[i],x))).join(',')})`};
+function rng(s){return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const BEATS=[];for(let b=2;b<13;b+=.5)BEATS.push(b);
+const pulse=t=>BEATS.reduce((s,b)=>t>=b?s+Math.exp(-(t-b)*12):s,0);
+const IMPACTS=[2,5,8,11,13];
+
+// ---------- helpers ----------
+function bg(c){ctx.fillStyle=c;ctx.fillRect(-200,-200,W+400,H+400)}
+function txt(s,font,x,y,color,align='left',ls='0px'){ctx.font=font;ctx.letterSpacing=ls;ctx.textAlign=align;ctx.fillStyle=color;ctx.fillText(s,x,y);ctx.letterSpacing='0px'}
+// lay out letters centered at x, call cb(ch,i,cx) with each letter centre
+function letters(s,font,x,spacing,cb){ctx.font=font;const ws=[...s].map(c=>ctx.measureText(c).width);
+  const tot=ws.reduce((a,b)=>a+b,0)+spacing*(s.length-1);let cx=x-tot/2;
+  [...s].forEach((c,i)=>{cb(c,i,cx+ws[i]/2,ws[i]);cx+=ws[i]+spacing});return tot}
+function clipRect(x,y,w,h){ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip()}
+function typed(s,t,a,cps=28){return s.slice(0,Math.floor(cl((t-a)*cps,0,s.length)))}
+function label(n,name,t,a,color){ // "01 — Morphing" style section label, typewriter
+  const k=oExpo(P(t,a,a+.5));ctx.save();ctx.globalAlpha=k;
+  ctx.fillStyle=color;ctx.fillRect(120,H-150,lerp(0,48,k),3);
+  txt(n,"700 22px Inter",120,H-112,color,'left','3px');
+  txt(typed(name,t,a+.15),"500 44px 'Inter Display'",170,H-112,color);ctx.restore()}
+
+// ---------- scene 1 : dot -> line -> grid -> circle wipe (0-2) ----------
+function s1(t){
+  bg(COL.ink);
+  // anticipation squash, then stretch into a line
+  const pop=spr(t-.08,.3,18), sq=Math.sin(P(t,.3,.5)*Math.PI)*.25;
+  const st=ioExpo(P(t,.5,1.0)), thin=oExpo(P(t,.55,.85));
+  let w=lerp(30,W*.78,st)*(1-sq*.6)*pop, h=lerp(30,4,thin)*(1+sq)*pop;
+  ctx.fillStyle=COL.cream;
+  const split=P(t,1.0,1.5), gridOut=iExpo(P(t,1.55,1.95));
+  ctx.save();ctx.translate(CX,CY);ctx.rotate(ioExpo(P(t,1.5,2))*Math.PI/4);ctx.scale(1+gridOut*1.6,1+gridOut*1.6);
+  for(let i=-3;i<=3;i++){const k=oExpo(P(t,1.0+Math.abs(i)*.035,1.45+Math.abs(i)*.035));
+    if(i!==0&&k<=0)continue;const y=i*110*k;
+    ctx.globalAlpha=i===0?1:k;ctx.beginPath();ctx.roundRect(-w/2,y-h/2,w,h,h/2);ctx.fill()}
+  ctx.globalAlpha=1;
+  for(let j=-6;j<=6;j++){const k=oExpo(P(t,1.12+Math.abs(j)*.025,1.6+Math.abs(j)*.025));if(k<=0)continue;
+    const hh=660*k;ctx.fillRect(j*120*(.6+.4*k)-2,-hh/2,4,hh)}
+  // intersection crosses pop
+  ctx.fillStyle=COL.coral;
+  for(let i=-3;i<=3;i++)for(let j=-6;j<=6;j++){const d=Math.hypot(i,j*.5);const k=spr(t-1.35-d*.035,.35,20);if(k<=0)continue;
+    ctx.save();ctx.translate(j*120,i*110);ctx.rotate((1-k)*1.5);const s=9*k;ctx.fillRect(-s,-1.5,2*s,3);ctx.fillRect(-1.5,-s,3,2*s);ctx.restore()}
+  ctx.restore();
+  // coral circle wipe into scene 2
+  const r=ioExpo(P(t,1.6,2.0))*1250;
+  if(r>0){ctx.fillStyle=COL.coral;ctx.beginPath();ctx.arc(CX,CY,r,0,TAU);ctx.fill()}
+  // tiny caption under the dot
+  if(t<1.0){ctx.globalAlpha=oExpo(P(t,.15,.4))*(1-P(t,.6,.8));txt(typed('CHAQUE PIXEL A UN TIMING',t,.15,50),"600 18px Inter",CX,CY+70,COL.cream,'center','6px');ctx.globalAlpha=1}
+}
+
+// ---------- scene 2 : kinetic type on coral (2-5) ----------
+function s2(t){
+  bg(COL.coral);
+  const big="900 300px 'Inter Display'", p=1+pulse(t)*.012;
+  ctx.save();ctx.translate(CX,CY);ctx.scale(p,p);ctx.translate(-CX,-CY);
+  // eyebrow
+  ctx.save();clipRect(0,CY-330,W,50);const e=oExpo(P(t,2.55,3.1));
+  txt('PORTFOLIO  ·  MOTION  ·  2026',"700 24px Inter",CX,CY-290+(1-e)*50,COL.ink,'center','10px');ctx.restore();
+  // MOTION — letters rise out of a mask with a spring, then leave upward
+  ctx.save();clipRect(0,CY-260,W,275);
+  letters('MOTION',big,CX,-6,(c,i,x)=>{const k=spr(t-2.05-i*.045,.36,15),ex=iExpo(P(t,4.45+i*.03,4.8+i*.03));
+    ctx.save();ctx.translate(x,CY-12+(1-k)*290-ex*300);ctx.rotate((1-k)*.25);txt(c,big,0,0,COL.ink,'center');ctx.restore()});
+  ctx.restore();
+  // DESIGN — outline first, then a fill wipes across
+  ctx.save();clipRect(0,CY+20,W,262);
+  const fillX=lerp(CX-700,CX+700,ioCubic(P(t,3.15,3.75)));
+  letters('DESIGN',big,CX,-6,(c,i,x)=>{const k=spr(t-2.4-i*.045,.36,15),ex=iExpo(P(t,4.5+i*.03,4.85+i*.03));
+    ctx.save();ctx.translate(x,CY+258+(1-k)*290-ex*300);ctx.rotate((1-k)*-.25);
+    ctx.font=big;ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle=COL.ink;ctx.strokeText(c,0,0);ctx.restore()});
+  clipRect(0,0,fillX,H);
+  letters('DESIGN',big,CX,-6,(c,i,x)=>{const k=spr(t-2.4-i*.045,.36,15),ex=iExpo(P(t,4.5+i*.03,4.85+i*.03));
+    ctx.save();ctx.translate(x,CY+258+(1-k)*290-ex*300);ctx.rotate((1-k)*-.25);txt(c,big,0,0,COL.cream,'center');ctx.restore()});
+  ctx.restore();
+  // underline
+  const u=oExpo(P(t,3.6,4.1))-oExpo(P(t,4.4,4.75));ctx.fillStyle=COL.ink;
+  const ux=CX-500+ (P(t,4.4,4.75)>0?1000*oExpo(P(t,4.4,4.75)):0);ctx.fillRect(ux,CY+310,1000*u,8);
+  ctx.restore();
+  // exit: skewed bands sweep in from the right
+  [COL.violet,COL.mint,COL.ink].forEach((c,k)=>{const x=lerp(W+300,-520,ioExpo(P(t,4.5+k*.06,4.88+k*.06)));if(x>=W+300)return;
+    ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(x,-200);ctx.lineTo(W+3000,-200);ctx.lineTo(W+3000,H+200);ctx.lineTo(x-360,H+200);ctx.fill()});
+}
+
+// ---------- scene 3 : shape morphing (5-8) ----------
+const NM=240;
+const poly=(n,rot)=>th=>Math.cos(Math.PI/n)/Math.cos(mod(th-rot,TAU/n)-Math.PI/n);
+const SHAPES=[()=>1,poly(4,Math.PI/4),poly(3,-Math.PI/2),
+  th=>{const f=Math.abs(mod(th+Math.PI/2,TAU/5)/(TAU/5)-.5)*2;return lerp(.46,1,f)},
+  th=>.78+.22*Math.cos(8*th),()=>1];
+const SH_R=SHAPES.map(f=>{const a=[];for(let i=0;i<NM;i++)a.push(f(i/NM*TAU));const m=Math.max(...a);return a.map(v=>v/m)});
+const SH_C=[COL.coral,COL.violet,COL.mint,COL.sun,COL.coral,COL.cream];
+const M0=5.3;
+function morphState(t){let k=0,x=0,rot=.35*(t-5);
+  for(let i=0;i<5;i++){const e=ioExpo(P(t,M0+i*.5,M0+i*.5+.4));rot+=e*Math.PI/2;if(t>=M0+i*.5){k=i;x=e}}
+  if(t<M0){k=0;x=0}
+  return{k,x,rot}}
+function shapePath(t,R){const {k,x,rot}=morphState(t);ctx.beginPath();
+  for(let i=0;i<=NM;i++){const j=i%NM,r=lerp(SH_R[k][j],SH_R[k+1][j],x)*R,a=j/NM*TAU+rot;
+    i?ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r):ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r)}ctx.closePath();
+  return mix(SH_C[k],SH_C[k+1],x)}
+const PARTS=(()=>{const r=rng(7),a=[];for(let i=0;i<110;i++)a.push({a:r()*TAU,r:r()*260+320,w:(r()*.8+.35)*(r()<.5?-1:1),s:r()*3+1.5,d:r()*.35,c:r()<.18});return a})();
+function s3(t){
+  bg(COL.ink);
+  // dotted backdrop with parallax
+  ctx.fillStyle='rgba(243,239,230,.07)';const off=(t-5)*-30;
+  for(let x=0;x<W+60;x+=60)for(let y=0;y<H+60;y+=60)ctx.fillRect(mod(x+off,W+60)-30,y,2,2);
+  const intro=spr(t-5.0,.4,13), outro=1-iExpo(P(t,7.7,7.98)), R=230*intro*outro*(1+pulse(t)*.04);
+  ctx.save();ctx.translate(CX,CY);
+  // particles orbit, spawn outward, get sucked in at the end
+  PARTS.forEach(p=>{const sp=oExpo(P(t,5+p.d,5.7+p.d)),rr=p.r*sp*(1-iExpo(P(t,7.55,7.92)))*(1+pulse(t)*.03);
+    const a=p.a+p.w*(t-5)+iExpo(P(t,7.55,7.92))*2;
+    ctx.fillStyle=p.c?COL.coral:'rgba(243,239,230,.75)';ctx.beginPath();ctx.arc(Math.cos(a)*rr,Math.sin(a)*rr,p.s*sp,0,TAU);ctx.fill()});
+  // trailing echoes (time-delayed copies)
+  for(let k=6;k>=1;k--){const tk=t-k*.035;ctx.save();ctx.scale(1+k*.05,1+k*.05);const c=shapePath(tk,R);
+    ctx.globalAlpha=(1-k/7)*.45;ctx.lineWidth=2;ctx.strokeStyle=c;ctx.stroke();ctx.restore()}
+  const c=shapePath(t,R);ctx.fillStyle=c;ctx.fill();
+  // nested delayed copies inside
+  [[.66,.08],[.36,.16]].forEach(([s,d])=>{shapePath(t-d,R*s);ctx.lineWidth=6;ctx.strokeStyle=COL.ink;ctx.stroke()});
+  ctx.restore();
+  label('01','Morphing & easing',t,5.25,COL.cream);
+  // side spec readout
+  const {k,x}=morphState(t);ctx.globalAlpha=oExpo(P(t,5.4,5.9))*outro;
+  txt('ease: in-out expo',"500 20px 'DejaVu Sans Mono'",W-120,H-150,'rgba(243,239,230,.55)','right');
+  txt(`morph ${k+1}/5  ·  ${(x*100|0).toString().padStart(3,'0')}%`,"500 20px 'DejaVu Sans Mono'",W-120,H-118,COL.cream,'right');
+  ctx.globalAlpha=1;
+}
+
+// ---------- scene 4 : 3D particle field (8-11) ----------
+const NP=520,GA=26,GB=20;
+const SPH=[],TOR=[];
+for(let i=0;i<NP;i++){const y=1-2*(i+.5)/NP,r=Math.sqrt(1-y*y),th=i*2.39996;SPH.push([Math.cos(th)*r,y,Math.sin(th)*r]);
+  const a=i%GA,b=(i/GA)|0,u=TAU*a/GA,v=TAU*b/GB;TOR.push([(.85+.36*Math.cos(v))*Math.cos(u),.36*Math.sin(v),(.85+.36*Math.cos(v))*Math.sin(u)])}
+function wave(i,t){const a=i%GA,b=(i/GA)|0,x=(a/(GA-1)-.5)*2.7,z=(b/(GB-1)-.5)*2;return[x,.22*Math.sin(4*x-7*t)*Math.cos(2.5*z+t),z]}
+function s4(t){
+  const g=ctx.createRadialGradient(CX,CY,0,CX,CY,900);g.addColorStop(0,'#1a1440');g.addColorStop(1,COL.ink);bg(g);
+  const yaw=(t-8)*.9+ioExpo(P(t,9,9.6))*1.4, pitch=lerp(.35,.75,ioExpo(P(t,9.85,10.4)))+.08*Math.sin(t*2);
+  const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
+  const col=pulse(t)*.05+1, collapse=1-iExpo(P(t,10.55,10.85));
+  // orbit guides
+  ctx.save();ctx.translate(CX,CY);ctx.globalAlpha=.18*oExpo(P(t,8.2,8.8))*collapse;ctx.strokeStyle=COL.cream;ctx.lineWidth=1.5;
+  for(let k=0;k<3;k++){ctx.beginPath();ctx.ellipse(0,0,520+k*60,(520+k*60)*Math.abs(Math.sin(pitch+k*.4)),yaw*.3+k,0,TAU*oExpo(P(t,8.1+k*.1,8.9+k*.1)));ctx.stroke()}
+  ctx.restore();
+  ctx.globalCompositeOperation='lighter';
+  for(let i=0;i<NP;i++){const q=i/NP;
+    const s=oBack(P(t,8.0+q*.3,8.55+q*.3));
+    const a1=ioExpo(P(t,9.0+q*.18,9.5+q*.18)),a2=ioExpo(P(t,9.85+q*.18,10.35+q*.18));
+    const w=wave(i,t);let p=[0,1,2].map(d=>lerp(lerp(SPH[i][d],TOR[i][d],a1),w[d],a2)*s*collapse*col);
+    // spin during collapse
+    let x=p[0]*cy-p[2]*sy,z=p[0]*sy+p[2]*cy,y=p[1];const y2=y*cp-z*sp,z2=y*sp+z*cp;
+    const per=3.2/(3.2+z2),X=CX+x*per*400,Y=CY+y2*per*400;
+    const hue=cl((p[1]+1)/2);ctx.fillStyle=hue<.5?mix(COL.violet,COL.mint,hue*2):mix(COL.mint,COL.coral,(hue-.5)*2);
+    ctx.globalAlpha=cl(.35+.65*per-.2)*(s>0?1:0);ctx.beginPath();ctx.arc(X,Y,3.4*per*per,0,TAU);ctx.fill()}
+  ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+  // flash + cream wipe into scene 5
+  const fl=Math.exp(-Math.max(0,t-10.85)*20)*(t>10.85?1:0);if(fl>0.01){ctx.fillStyle=`rgba(255,255,255,${fl})`;ctx.beginPath();ctx.arc(CX,CY,40+fl*30,0,TAU);ctx.fill()}
+  label('02','3D & particules',t,8.25,COL.cream);
+  ctx.globalAlpha=oExpo(P(t,8.4,8.9))*collapse;
+  const shape=t<9.3?'sphere':t<10.1?'torus':'wave';
+  txt(`${NP} pts  ·  ${shape}`,"500 20px 'DejaVu Sans Mono'",W-120,H-118,COL.cream,'right');
+  txt(`yaw ${(yaw%TAU).toFixed(2)}  pitch ${pitch.toFixed(2)}`,"500 20px 'DejaVu Sans Mono'",W-120,H-150,'rgba(243,239,230,.55)','right');ctx.globalAlpha=1;
+  const r=ioExpo(P(t,10.78,11.0))*1250;if(r>0){ctx.fillStyle=COL.cream;ctx.beginPath();ctx.arc(CX,CY,r,0,TAU);ctx.fill()}
+}
+
+// ---------- scene 5 : data motion on cream (11-13) ----------
+const STATS=[[60,0,'IMAGES / SECONDE',COL.coral],[900,0,'FRAMES CALCULÉES',COL.violet],[0,99,'LOGICIEL DE MONTAGE',COL.mint]];
+function s5(t){
+  bg(COL.cream);
+  const ex=iExpo(P(t,12.5,12.85));
+  ctx.save();ctx.translate(0,-ex*120);ctx.globalAlpha=1-ex;
+  label('03','Data motion',t,11.05,COL.ink);
+  STATS.forEach(([to,from,lab,c],i)=>{const x=360+i*600,a=11.1+i*.12,k=oExpo(P(t,a,a+1.0)),r=spr(t-a,.38,15);
+    const kq=oExpo(P(Math.floor(t*FPS)/FPS,a,a+1.0)),n=Math.round(lerp(from,to,kq)); // digits snap per frame, no blur smear
+    ctx.save();clipRect(x-300,CY-230,600,260);txt(String(n),"800 230px 'Inter Display'",x,CY+10+(1-r)*260,COL.ink,'center','-8px');ctx.restore();
+    ctx.fillStyle=c;const bw=300*oExpo(P(t,a+.15,a+.8));ctx.fillRect(x-150,CY+55,bw,10);
+    ctx.fillStyle=COL.ink;ctx.beginPath();ctx.arc(x-150+bw,CY+60,9*spr(t-a-.2),0,TAU);ctx.fill();
+    ctx.globalAlpha=(1-ex)*oExpo(P(t,a+.3,a+.7));txt(lab,"700 24px Inter",x,CY+125+(1-oExpo(P(t,a+.3,a+.8)))*20,COL.ink,'center','5px');ctx.globalAlpha=1-ex});
+  ctx.restore();
+  // ink panel rises from the bottom
+  const top=lerp(H,0,ioExpo(P(t,12.58,13.0)));if(top<H){ctx.fillStyle=COL.ink;ctx.fillRect(-200,top,W+400,H-top+200)}
+}
+
+// ---------- scene 6 : end card (13-15) ----------
+function s6(t){
+  bg(COL.ink);const mx=CX,my=CY-140,R=78;
+  // four lines converge on the mark
+  [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dx,dy],k)=>{const h=iExpo(P(t,13.0+k*.03,13.3+k*.03)),tl=iExpo(P(t,12.92+k*.03,13.3+k*.03));
+    const L=dx?W*.6:H*.6, x1=mx+dx*L*(1-h), y1=my+dy*L*(1-h), x2=mx+dx*L*(1-tl), y2=my+dy*L*(1-tl);
+    if(h>=1)return;ctx.strokeStyle=COL.cream;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()});
+  // shockwave
+  const sw=P(t,13.3,13.9);if(sw>0&&sw<1){ctx.strokeStyle=`rgba(255,90,54,${1-sw})`;ctx.lineWidth=2;ctx.beginPath();ctx.arc(mx,my,R+oExpo(sw)*500,0,TAU);ctx.stroke()}
+  // ring draws on
+  const ring=ioExpo(P(t,13.28,13.85)),st=-Math.PI/2+(1-ring)*-2;
+  ctx.strokeStyle=COL.coral;ctx.lineWidth=12;ctx.lineCap='round';
+  if(ring>0){ctx.beginPath();ctx.arc(mx,my,R,st,st+ring*TAU);ctx.stroke()}ctx.lineCap='butt';
+  // dot orbits and lands at 12 o'clock
+  const o=oExpo(P(t,13.4,14.2)),oa=-Math.PI/2-(1-o)*TAU*1.5;
+  ctx.fillStyle=COL.mint;ctx.beginPath();ctx.arc(mx+Math.cos(oa)*R,my+Math.sin(oa)*R,15*spr(t-13.4,.4,16),0,TAU);ctx.fill();
+  ctx.fillStyle=COL.cream;ctx.beginPath();ctx.arc(mx,my,26*spr(t-13.55,.3,18),0,TAU);ctx.fill();
+  // name with tracking animation
+  const big="900 170px 'Inter Display'";
+  ctx.save();clipRect(0,CY-60,W,240);
+  const sp=lerp(70,4,oExpo(P(t,13.45,14.4)));
+  letters('CLAUDE',big,CX,sp,(c,i,x)=>{const k=spr(t-13.45-i*.04,.38,15);txt(c,big,x,CY+150+(1-k)*230,COL.cream,'center')});
+  ctx.restore();
+  const s=oExpo(P(t,13.9,14.5));ctx.globalAlpha=s;
+  txt('MOTION DESIGNER  ·  SHOWREEL 2026',"600 28px Inter",CX,CY+235,'rgba(243,239,230,.7)','center',lerp(22,9,s)+'px');
+  ctx.fillStyle=COL.coral;const lw=oExpo(P(t,14.1,14.7))*420;ctx.fillRect(CX-lw/2,CY+275,lw,3);
+  ctx.globalAlpha=oExpo(P(t,14.35,14.8));
+  txt('100% code  ·  0 template  ·  0 logiciel de montage',"500 20px 'DejaVu Sans Mono'",CX,H-90,'rgba(243,239,230,.45)','center');
+  ctx.globalAlpha=1;
+}
+
+// ---------- composition ----------
+function camera(t){let dx=0,dy=0,z=1;IMPACTS.forEach(b=>{const d=t-b;if(d<0||d>.8)return;const a=Math.exp(-d*9);dx+=11*a*Math.sin(d*70);dy+=8*a*Math.cos(d*53);z+=.03*Math.exp(-d*7)});
+  ctx.translate(CX+dx,CY+dy);ctx.scale(z,z);ctx.translate(-CX,-CY)}
+function draw(t){ctx.save();ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';camera(t);
+  (t<2?s1:t<5?s2:t<8?s3:t<11?s4:t<13?s5:s6)(t);ctx.restore()}
+const GRAIN=[0,1,2,3].map(n=>{const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d'),d=g.createImageData(256,256),r=rng(99+n);
+  for(let i=0;i<d.data.length;i+=4){const v=r()*255;d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=255}g.putImageData(d,0,0);return out.createPattern(c,'repeat')});
+function hud(t,f){const light=(t>=2.05&&t<4.6)||(t>=11&&t<12.9),c=light?'11,11,16':'243,239,230',a=1-P(t,13,13.4);if(a<=0)return;
+  out.save();out.globalAlpha=a;out.strokeStyle=`rgba(${c},.55)`;out.lineWidth=2;const m=56,l=28;
+  [[m,m,1,1],[W-m,m,-1,1],[m,H-m,1,-1],[W-m,H-m,-1,-1]].forEach(([x,y,sx,sy])=>{out.beginPath();out.moveTo(x,y+l*sy);out.lineTo(x,y);out.lineTo(x+l*sx,y);out.stroke()});
+  out.fillStyle=`rgba(${c},.7)`;out.font="600 16px Inter";out.letterSpacing='4px';out.textAlign='left';out.fillText('CLAUDE — REEL 26',m+44,m+22);
+  out.letterSpacing='0px';out.font="500 16px 'DejaVu Sans Mono'";out.textAlign='right';
+  const ss=Math.floor(f/FPS),ff=f%FPS;out.fillText(`TC 00:00:${String(ss).padStart(2,'0')}:${String(ff).padStart(2,'0')}`,W-m-44,m+22);
+  out.fillStyle=`rgba(${c},.2)`;out.fillRect(m+44,H-m-12,W-2*m-88,2);out.fillStyle=COL.coral;out.fillRect(m+44,H-m-12,(W-2*m-88)*f/(FPS*DUR-1),2);
+  out.restore()}
+function renderFrame(f){
+  for(let s=0;s<SUB;s++){draw(f/FPS+s/SUB*(.55/FPS));out.globalAlpha=1/(s+1);out.drawImage(buf,0,0)} // accumulated motion blur
+  out.globalAlpha=1;const t=f/FPS;
+  const v=out.createRadialGradient(CX,CY,H*.35,CX,CY,H*1.05);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,.38)');out.fillStyle=v;out.fillRect(0,0,W,H);
+  out.save();out.globalAlpha=.045;out.globalCompositeOperation='overlay';const r=rng(f);out.translate(-r()*256,-r()*256);out.fillStyle=GRAIN[f%4];out.fillRect(0,0,W+256,H+256);out.restore();
+  hud(t,f)}
+window.ready=document.fonts.load("900 100px 'Inter Display'").then(()=>Promise.all(["800 10px 'Inter Display'","500 10px 'Inter Display'","700 10px Inter","600 10px Inter","500 10px Inter"].map(f=>document.fonts.load(f))));
+// live preview when opened in a browser
+if(!navigator.webdriver){const t0=performance.now();ready.then(()=>{(function loop(){const f=Math.floor((performance.now()-t0)/1000*FPS)%(FPS*DUR);renderFrame(f);requestAnimationFrame(loop)})()})}
+</script></body></html>
