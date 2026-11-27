@@ -12,8 +12,13 @@ const NARRATION = [
   [49.8, 57.6, "Et c'est ainsi que commença l'histoire de l'humanité.|Une histoire qui nous rappelle la miséricorde d'Allah|et l'importance du repentir."],
 ];
 
-// Chunk timing: duration proportional to letters, plus a breath after a full stop.
+const pretty = p => p.replace(/'/g, "\u2019").replace(/ :/g, "\u00A0:");
+// Measured timings (voice/timing.js, from the generated narration) win; otherwise estimate from the plan.
 function subtitleChunks() {
+  const aligned = typeof ALIGNED !== "undefined" ? ALIGNED
+    : typeof require === "function" ? (() => { try { return require("./voice/timing.js"); } catch (e) { return null; } })() : null;
+  if (aligned) return aligned.map(c => ({ start: c.start, end: c.end, text: pretty(c.text) }));
+  // estimate: duration proportional to letters, plus a breath after a full stop
   const out = [];
   for (const [s, e, text] of NARRATION) {
     const parts = text.split("|");
@@ -22,7 +27,7 @@ function subtitleChunks() {
     let t = s;
     parts.forEach((p, i) => {
       const d = (e - s) * w[i] / tot;
-      out.push({ start: +t.toFixed(2), end: +(t + d).toFixed(2), text: p.replace(/'/g, "’").replace(/ :/g, " :") });
+      out.push({ start: +t.toFixed(2), end: +(t + d).toFixed(2), text: pretty(p) });
       t += d;
     });
   }
